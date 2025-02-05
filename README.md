@@ -146,6 +146,14 @@ See [LevelDB Persistence](https://github.com/yjs/y-leveldb) for more info.
 HOST=localhost PORT=1234 YPERSISTENCE=./dbDir node ./node_modules/y-websocket/bin/server.cjs
 ```
 
+Persist document updates in a PostgreSQL database.
+
+See [PostgreSQL Persistence](https://github.com/MaxNoetzold/y-postgresql) for more info.
+
+```sh
+HOST=localhost PORT=1234 YPERSISTENCEPG=postgres://user:password@localhost:5432/dbName node ./node_modules/y-websocket/bin/server.cjs
+```
+
 ### Websocket Server with HTTP callback
 
 Send a debounced callback to an HTTP server (`POST`) on document update. Note that this implementation doesn't implement a retry logic in case the `CALLBACK_URL` does not work.

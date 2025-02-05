@@ -22,6 +22,7 @@ const wsReadyStateClosed = 3 // eslint-disable-line
 // disable gc when using snapshots!
 const gcEnabled = process.env.GC !== 'false' && process.env.GC !== '0'
 const persistenceDir = process.env.YPERSISTENCE
+const persistencePG = process.env.YPERSISTENCEPG;
 /**
  * @type {{bindState: function(string,WSSharedDoc):void, writeState:function(string,WSSharedDoc):Promise<any>, provider: any}|null}
  */
@@ -44,6 +45,41 @@ if (typeof persistenceDir === 'string') {
     },
     writeState: async (_docName, _ydoc) => {}
   }
+} else if (typeof persistencePG === 'string') {
+  console.info('Persisting documents to "' + persistencePG + "'");
+  // @ts-ignore
+  const PostgresqlPersistence = require('y-postgresql').PostgresqlPersistence;
+  const { parse } = require('pg-connection-string');
+
+  (async () => {
+    const config = parse(persistencePG);
+    const pgdb = await PostgresqlPersistence.build(
+      {
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        user: config.user,
+        password: config.password,
+      },
+      { tableName: 'yjs-writings', useIndex: false, flushSize: 200 }
+    );
+
+    persistence = {
+      provider: pgdb,
+      bindState: async (docName, ydoc) => {
+        const persistedYdoc = await pgdb.getYDoc(docName);
+        const newUpdates = Y.encodeStateAsUpdate(ydoc);
+        pgdb.storeUpdate(docName, newUpdates);
+        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc));
+        ydoc.on('update', async (update) => {
+          pgdb.storeUpdate(docName, update);
+        });
+      },
+      writeState: async (_docName, _ydoc) => {},
+    };
+  })().catch((err) => {
+    console.error('Failed to initialize PostgreSQL persistence:', err);
+  });
 }
 
 /**
